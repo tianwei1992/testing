@@ -4,6 +4,7 @@ import hashlib
 import random
 import json
 import glob, os
+from ocr_recog import ocr_recong
 
 def generate_sign(appid,q,salt,key):
 
@@ -23,7 +24,7 @@ def generate_sign(appid,q,salt,key):
 2、对字符串1做md5，得到32位小写的sign。
 	"""
 
-def get_res_from_baidu(query):
+def get_trans_from_baidu(query):
 	"""
 	首先生成随机数salt，接着构造sign,接着构造请求参数params
 	这里salt在文档里被描述成一个int类型的随机数，但没有规定大小。示例中salt=1435660288，于是这里我也随机random.random.int()
@@ -41,7 +42,7 @@ def get_res_from_baidu(query):
 		'sign':sign
 
 	}
-	res = requests.get(URL, params=params)
+	res = requests.get(TRANS_URL, params=params)
 	# print('headers',res.request.headers)
 	res.raise_for_status()
 	return res
@@ -71,19 +72,41 @@ def save_result(file,content,D_DIR):
 
 
 def start():
-	os.chdir(S_DIR)
-	for file in glob.glob("*.txt"):
-		#print(file)
-		query=get_query(file)
-		try:
-			print("正在翻译文档 "+file+"……")
-			res=get_res_from_baidu(query)
-			content=parse_content(res.text)
-			print("翻译结果是：",content)
-			save_result(file,content,D_DIR)
-			print("保存成功\n")
-		except:
-			print("翻译失败")
-			continue
+	try:
+		print("正在识别图片 ……")
+		query = ocr_recong()
+	except:
+		print("识别失败")
+	try:
+		print("正在翻译……")
+		res = get_trans_from_baidu(query)
+		content = parse_content(res.text)
+		print("翻译结果是：", content)
+	except:
+		print("翻译失败")
+	try:
+		save_result(OCR_FILE, content, D_DIR)
+		print("保存成功")
+	except:
+		print("保存失败")
+
+
+		"""
+		os.chdir(S_DIR)
+		for file in glob.glob("*.txt"):
+			#print(file)
+			query=get_query(file)
+			try:
+				print("正在翻译文档 "+file+"……")
+				res=get_trans_from_baidu(query)
+				content=parse_content(res.text)
+				print("翻译结果是：",content)
+				save_result(file,content,D_DIR)
+				print("保存成功\n")
+			except:
+				print("翻译失败")
+				continue
+	"""
+
 if __name__=="__main__":
 	start()

@@ -3,6 +3,7 @@ from config import *
 import hashlib
 import random
 import json
+import glob, os
 
 def generate_sign(appid,q,salt,key):
 
@@ -22,18 +23,16 @@ def generate_sign(appid,q,salt,key):
 2、对字符串1做md5，得到32位小写的sign。
 	"""
 
-def get_res_from_baidu():
+def get_res_from_baidu(query):
 	"""
 	首先生成随机数salt，接着构造sign,接着构造请求参数params
 	这里salt在文档里被描述成一个int类型的随机数，但没有规定大小。示例中salt=1435660288，于是这里我也随机random.random.int()
 	"""
-
 	salt = str(random.randint(1, 1000))
-	QUERY = input(">>请输入英文：")
-	sign=generate_sign(APPID, QUERY, salt, KEY)
+	sign=generate_sign(APPID, query, salt, KEY)
 
 	params = {
-		'q': QUERY,
+		'q': query,
 		'from': FROM,
 		'to': TO,
 		'appid': APPID,
@@ -53,13 +52,38 @@ def parse_content(json_str):
 	dst=trans_result[0]['dst']
 	return dst
 
+def get_query(file):
+	with open(file, "r") as fd:
+		query = fd.read()
+		#print('query=', query)
+		return query
+
+
+def save_result(file,content,D_DIR):
+	file_name=file.split('.')[0]+'_trans'+'.txt'
+	#print(file_name)
+	file_path=D_DIR+file_name
+	if  not os.path.exists(D_DIR):
+		os.mkdir(D_DIR)
+
+	with open(file_path,'w+') as fd:
+		fd.write(content)
+
+
 def start():
-	while True:
+	os.chdir(S_DIR)
+	for file in glob.glob("*.txt"):
+		#print(file)
+		query=get_query(file)
 		try:
-			res=get_res_from_baidu()
+			print("正在翻译文档 "+file+"……")
+			res=get_res_from_baidu(query)
 			content=parse_content(res.text)
 			print("翻译结果是：",content)
+			save_result(file,content,D_DIR)
+			print("保存成功\n")
 		except:
+			print("翻译失败")
 			continue
 if __name__=="__main__":
 	start()

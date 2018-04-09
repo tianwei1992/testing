@@ -11,12 +11,13 @@ import json
 import glob, os
 import logging
 import sys
-import getopt
+import fire
 
 """
 再引入自己的
 """
-from config import S_DIR,D_DIR,FROM,TO,TRANS_URL,OCR_FILE
+#from config import S_DIR,D_DIR,FROM,TO,TRANS_URL,OCR_FILE
+from config import TRANS_URL
 from ocr_recog import ocr_recong
 
 
@@ -57,21 +58,21 @@ def generate_sign(appid,q,salt,key):
 2、对字符串1做md5，得到32位小写的sign。
 	"""
 
-def get_trans_from_baidu(query,appid,key):
+def get_trans_from_baidu(query,APPID,KEY,FROM,TO):
 	"""
 	首先生成随机数salt，接着构造sign,接着构造请求参数params
 	这里salt在文档里被描述成一个int类型的随机数，但没有规定大小。示例中salt=1435660288，于是这里我也随机random.random.int()
 	"""
 	salt = str(random.randint(1, 1000))
-	sign=generate_sign(appid, query, salt, key)
+	sign=generate_sign(APPID, query, salt, KEY)
 
 	params = {
 		'q': query,
 		'from': FROM,
 		'to': TO,
-		'appid':appid,
+		'appid':APPID,
 		'salt': salt,
-		'key': key,
+		'key': KEY,
 		'sign':sign
 
 	}
@@ -93,7 +94,7 @@ def get_query(file):
 		return query
 
 
-def save_result(file,content,D_DIR):
+def save_result(file,content,D_DIR,):
 	file_name=file.split('.')[0]+'_trans'+'.txt'
 	#print(file_name)
 	file_path=D_DIR+file_name
@@ -103,7 +104,19 @@ def save_result(file,content,D_DIR):
 	with open(file_path,'w+') as fd:
 		fd.write(content)
 
+"""
+不用getopt了因为fire更好用
+"""
 def get_opt():
+	env_dic = os.environ
+	APPID=env_dic.get("APPID")
+	KEY = env_dic.get("KEY")
+	API_KEY=env_dic.get("API_KEY")
+	SECRET_KEY=env_dic.get("SECRET_KEY")
+	return (APPID, KEY,API_KEY,SECRET_KEY)
+
+
+""""
 	try:
 		argv=sys.argv[1:]
 		opts, args = getopt.getopt(argv, "ha:k:i:s:p:")
@@ -126,50 +139,104 @@ def get_opt():
 			pic_url = arg
 	return (appid,key,api_key,secret_key,pic_url)
 
-def start():
-	try:
-		print("获取输入中……")
-		appid, key, api_key, secret_key,pic_url=get_opt()
-		print("正在识别图片 ……")
-		query = ocr_recong(api_key,secret_key,pic_url)
-		print("正在翻译……")
-		res = get_trans_from_baidu(query,appid,key)
-		content = parse_content(res.text)
-		print("翻译结果是：", content)
-		save_result(OCR_FILE, content, D_DIR)
-		print("保存成功")
-	except ConnectionError as e:
-		logging.exception(e)
-		print("ConnectionError")
-	except OSError as e:
-		logging.exception(e)
-		print("OSError")
-	except NameError as e:
-		logging.exception(e)
-		print("NameError")
-	except SyntaxError as e:
-		logging.exception(e)
-		print("SyntaxError")
-	except Exception as e:
-		logging.exception(e)
-		print("OtherError")
+"""
+class StartTrans(object):
+	def __init__(self,FROM='en',TO='zh'):
+		self._FROM=FROM
+		self._TO=TO
+		print("正在获取系统变量……")
+		self._APPID, self._KEY, self._API_KEY,self._SECRET_KEY = get_opt()
+	def start_with_input(self, query):
+		try:
+			print("正在翻译……")
+			res = get_trans_from_baidu(query,self._APPID,self._KEY,self._FROM,self._TO)
+			content = parse_content(res.text)
+			print("翻译结果是：", content)
+		except ConnectionError as e:
+			logging.exception(e)
+			print("ConnectionError")
+		except OSError as e:
+			logging.exception(e)
+			print("OSError")
+		except NameError as e:
+			logging.exception(e)
+			print("NameError")
+		except SyntaxError as e:
+			logging.exception(e)
+			print("SyntaxError")
+		except Exception as e:
+			logging.exception(e)
+			print("OtherError")
+	def start_with_dir(self, S_DIR=r"C:\Users\Administrator\Desktop\1",D_DIR=r"C:\Users\Administrator\Desktop\2"+'\\'):
+		try:
+			os.chdir(S_DIR)
+			for file in glob.glob("*.txt"):
+				print("正在读取文件……")
+				query = get_query(file)
+				print("正在翻译……")
+				res = get_trans_from_baidu(query,self._APPID,self._KEY,self._FROM,self._TO)
+				content = parse_content(res.text)
+				print("翻译结果是：", content)
+				save_result(file, content, D_DIR)
+				print("保存成功")
+		except ConnectionError as e:
+			logging.exception(e)
+			print("ConnectionError")
+		except OSError as e:
+			logging.exception(e)
+			print("OSError")
+		except NameError as e:
+			logging.exception(e)
+			print("NameError")
+		except SyntaxError as e:
+			logging.exception(e)
+			print("SyntaxError")
+		except Exception as e:
+			logging.exception(e)
+			print("OtherError")
+	def start_with_url(self,pic_url,OCR_FILE='ocr.txt',D_DIR=r"C:\Users\Administrator\Desktop\2"+'\\'):
+		try:
 
+			print("正在识别图片 ……")
+			query = ocr_recong(self._API_KEY,self._SECRET_KEY,pic_url)
+			print("正在翻译……")
+			res = get_trans_from_baidu(query,self._APPID,self._KEY,self._FROM,self._TO)
+			content = parse_content(res.text)
+			print("翻译结果是：", content)
+			save_result(OCR_FILE, content, D_DIR)
+			print("保存成功")
+		except ConnectionError as e:
+			logging.exception(e)
+			print("ConnectionError")
+		except OSError as e:
+			logging.exception(e)
+			print("OSError")
+		except NameError as e:
+			logging.exception(e)
+			print("NameError")
+		except SyntaxError as e:
+			logging.exception(e)
+			print("SyntaxError")
+		except Exception as e:
+			logging.exception(e)
+			print("OtherError")
+
+			"""
+			os.chdir(S_DIR)
+			for file in glob.glob("*.txt"):
+				#print(file)
+				query=get_query(file)
+				try:
+					print("正在翻译文档 "+file+"……")
+					res=get_trans_from_baidu(query)
+					content=parse_content(res.text)
+					print("翻译结果是：",content)
+					save_result(file,content,D_DIR)
+					print("保存成功\n")
+				except:
+					print("翻译失败")
+					continue
 		"""
-		os.chdir(S_DIR)
-		for file in glob.glob("*.txt"):
-			#print(file)
-			query=get_query(file)
-			try:
-				print("正在翻译文档 "+file+"……")
-				res=get_trans_from_baidu(query)
-				content=parse_content(res.text)
-				print("翻译结果是：",content)
-				save_result(file,content,D_DIR)
-				print("保存成功\n")
-			except:
-				print("翻译失败")
-				continue
-	"""
 
 if __name__=="__main__":
-	start()
+	fire.Fire(StartTrans)
